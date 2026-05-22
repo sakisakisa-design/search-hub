@@ -1,35 +1,40 @@
 # Search Hub
 
-Search Hub is a Cloudflare Workers search gateway for humans and AI agents.
+Search Hub 是一个部署在 Cloudflare Workers 上的统一搜索网关。它同时服务两类用户：
 
-It gives you one search endpoint that can use whichever provider keys you have:
-Grok, Sonar, Brave, Tavily, or AnySearch. The same backend powers a small web UI
-and an MCP-style endpoint for agents.
+- 人类：打开网页，像用一个 AI 搜索控制台一样搜索、筛选、收藏、复制。
+- AI agent：通过 `/mcp` 调用搜索、问答、深度研究、抓取 URL、记住资料等工具。
 
-## What It Does
+它的核心思路很简单：你有哪个搜索 API key，就启用哪个 provider；没有的 provider 自动跳过，不会把整个服务拖崩。
 
-- Search from a human-friendly web UI.
-- Expose search tools to agents through `/mcp`.
-- Use any available provider key instead of requiring a fixed vendor.
-- Route different search modes to different providers.
-- Stream progress while long research searches are running.
-- Synthesize `research` results with Cloudflare Workers AI.
-- Save useful sources and ignore low-quality URLs.
-- Degrade gracefully when optional KV, D1, or AI Search bindings are missing.
+## 主要功能
 
-## Screens
+- 一个轻量网页搜索前端。
+- 一个复用同套逻辑的 MCP-style agent 入口。
+- 支持 Grok、Sonar、Brave、Tavily、AnySearch。
+- `Fast`、`Balanced`、`Fresh`、`Research` 四种搜索模式。
+- `Research` 模式会规划多个子查询，多 provider 搜索、去重，再用 Cloudflare Workers AI 写研究报告。
+- 支持流式进度，长搜索时可以看到当前跑到哪一步。
+- 支持保存有用来源、忽略低质量 URL。
+- 可选 KV 短缓存、D1 历史记录、Cloudflare AI Search 长期记忆。
+- 没有 KV/D1/AI Search 也能跑，功能会自动降级。
 
-The first screen is the actual search console, not a landing page. The UI supports:
+## 界面
 
-- Fast, Balanced, Fresh, and Research modes.
-- Time filters.
-- Source scope filters.
-- Include/exclude domain filters.
-- Search history.
-- Provider status.
-- Save, ignore, open, and copy actions.
+第一屏就是搜索体验，不是营销落地页。
 
-## Architecture
+前端支持：
+
+- 搜索框与搜索模式切换。
+- 时间范围筛选。
+- 来源范围筛选。
+- include / exclude domain。
+- 搜索历史。
+- Provider 状态面板。
+- 来源列表。
+- 收藏、忽略、打开、复制答案。
+
+## 架构
 
 ```text
 Frontend
@@ -57,75 +62,76 @@ Providers
   -> AnySearch
 
 Optional storage
-  -> KV for short search cache
-  -> D1 for history, saved sources, ignored URLs
-  -> Cloudflare AI Search for remembered documents
+  -> KV: 短期搜索缓存
+  -> D1: 历史、收藏、忽略列表
+  -> Cloudflare AI Search: 长期保存的资料
 ```
 
-## Provider Routing
+## Provider 路由策略
 
-Search Hub does not treat all providers as interchangeable.
+Search Hub 不把所有 provider 当成一模一样的搜索框。
 
-- `fast`: prefers raw web results such as Brave and Tavily.
-- `balanced`: prefers Sonar first, then web providers.
-- `fresh`: prefers Grok for current or social-heavy queries.
-- `research`: plans several sub-queries, fans out across multiple providers,
-  deduplicates sources, then asks Workers AI to write the final report.
+- `fast`：优先 Brave / Tavily，适合快速拿网页结果。
+- `balanced`：优先 Sonar，再补充网页 provider。
+- `fresh`：优先 Grok，适合时效性强、社交/热点类问题。
+- `research`：生成多个研究子任务，按任务分配 provider，比如官方资料、近期报道、独立分析、技术细节，然后合并来源并生成报告。
 
-If a provider key is missing, that provider is skipped. The Worker still starts.
+如果某个 provider 没有配置 key，它会被跳过。只要至少有一个可用 provider，就可以工作。
 
-## Requirements
+## 准备条件
+
+需要：
 
 - Node.js 20+
-- A Cloudflare account
+- Cloudflare 账号
 - Wrangler
-- At least one search provider API key
+- 至少一个搜索 provider API key
 
-Optional but useful:
+可选但推荐：
 
-- A Cloudflare Workers AI binding named `AI`
-- A KV namespace named `SEARCH_CACHE`
-- A D1 database named `SEARCH_DB`
-- A Cloudflare AI Search binding named `AI_SEARCH_UPLOAD`
+- Workers AI binding：`AI`
+- KV binding：`SEARCH_CACHE`
+- D1 binding：`SEARCH_DB`
+- Cloudflare AI Search binding：`AI_SEARCH_UPLOAD`
 
-## Local Development
+## 本地运行
 
-Install dependencies:
+安装依赖：
 
 ```sh
 npm install
 ```
 
-Copy the local environment template:
+复制本地环境变量模板：
 
 ```sh
 cp .dev.vars.example .dev.vars
 ```
 
-Edit `.dev.vars` and add whichever provider keys you have.
+编辑 `.dev.vars`，填入你拥有的 API key。
 
-Start the Worker:
+启动本地 Worker：
 
 ```sh
 npm run dev -- --port 8787
 ```
 
-Open:
+打开：
 
 ```text
 http://localhost:8787
 ```
 
-Useful checks:
+快速检查：
 
 ```sh
 curl http://localhost:8787/health
 curl http://localhost:8787/api/providers
 ```
 
-## Environment Variables
+## 环境变量
 
-Set any subset of these:
+你可以只填其中一部分：
 
 ```sh
 GROK_API_KEY=
@@ -135,7 +141,7 @@ TAVILY_API_KEY=
 ANYSEARCH_API_KEY=
 ```
 
-Optional model and provider settings:
+可选模型和 provider 设置：
 
 ```sh
 GROK_MODEL=grok-4.3
@@ -145,7 +151,7 @@ WORKERS_AI_SYNTH_MODEL=@cf/openai/gpt-oss-120b
 AI_SEARCH_AUTO_FETCH=false
 ```
 
-Optional Cloudflare AI Search REST upload settings:
+可选 Cloudflare AI Search REST 上传配置：
 
 ```sh
 CF_ACCOUNT_ID=
@@ -154,20 +160,20 @@ CF_AI_SEARCH_INSTANCE=
 CF_AI_SEARCH_NAMESPACE=
 ```
 
-Never commit `.dev.vars`, `.env`, API keys, or Cloudflare tokens.
+不要把 `.dev.vars`、`.env`、API key、Cloudflare token 提交到 GitHub。
 
-## Deploy To Cloudflare Workers
+## 部署到 Cloudflare Workers
 
-This repository is ready for Cloudflare's GitHub integration.
+这个仓库可以直接用于 Cloudflare 的 GitHub 集成。
 
-Recommended Cloudflare settings:
+推荐设置：
 
-- Framework preset: `None`
-- Build command: `npm run build`
-- Deploy command: `npm run deploy`
-- Root directory: repository root
+- Framework preset：`None`
+- Build command：`npm run build`
+- Deploy command：`npm run deploy`
+- Root directory：仓库根目录
 
-Before deploying, set Worker secrets in Cloudflare:
+部署前，在 Cloudflare Worker 里设置 secrets：
 
 ```sh
 wrangler secret put GROK_API_KEY
@@ -177,9 +183,9 @@ wrangler secret put TAVILY_API_KEY
 wrangler secret put ANYSEARCH_API_KEY
 ```
 
-You only need one provider key to make search work.
+只需要其中一个 provider key，搜索就能工作。
 
-Workers AI is configured in `wrangler.jsonc` with:
+Workers AI 已在 `wrangler.jsonc` 中配置：
 
 ```jsonc
 "ai": {
@@ -187,7 +193,7 @@ Workers AI is configured in `wrangler.jsonc` with:
 }
 ```
 
-Static frontend assets are configured with:
+静态前端资源也已在 `wrangler.jsonc` 中配置：
 
 ```jsonc
 "assets": {
@@ -196,27 +202,33 @@ Static frontend assets are configured with:
 }
 ```
 
-## Optional Storage
+## 可选存储
 
-### KV Cache
+### KV 缓存
 
-Add a KV binding named `SEARCH_CACHE` for short-lived search result caching.
+添加名为 `SEARCH_CACHE` 的 KV binding 后，Search Hub 会使用它做短期搜索结果缓存。
 
-### D1 History
+### D1 历史记录
 
-Add a D1 binding named `SEARCH_DB` for history, saved sources, and ignored URLs.
-The migration is in `migrations/0001_init.sql`.
+添加名为 `SEARCH_DB` 的 D1 binding 后，可以保存搜索历史、收藏来源、忽略 URL。
+
+数据库迁移在：
+
+```text
+migrations/0001_init.sql
+```
 
 ### Cloudflare AI Search
 
-Add an AI Search binding named `AI_SEARCH_UPLOAD` to save remembered sources as
-documents. You can also use the REST upload variables listed above.
+添加名为 `AI_SEARCH_UPLOAD` 的 AI Search binding 后，`remember` 会把保存的来源作为文档上传。
+
+也可以使用上面列出的 REST 上传环境变量。
 
 ## API
 
 ### `GET /api/providers`
 
-Returns enabled and missing providers.
+返回 provider 是否启用、缺少哪个环境变量。
 
 ### `POST /api/search`
 
@@ -234,8 +246,7 @@ Returns enabled and missing providers.
 
 ### `POST /api/search/stream`
 
-Same request shape as `/api/search`, but streams progress events before returning
-the final result.
+请求格式和 `/api/search` 相同，但会先流式返回搜索进度，最后返回完整结果。
 
 ### `POST /api/remember`
 
@@ -262,7 +273,7 @@ the final result.
 
 ## MCP
 
-`POST /mcp` exposes:
+`POST /mcp` 提供这些工具：
 
 - `search`
 - `answer`
@@ -271,7 +282,7 @@ the final result.
 - `fetch_url`
 - `remember`
 
-Quick check:
+快速检查：
 
 ```sh
 curl -X POST http://localhost:8787/mcp \
@@ -279,12 +290,11 @@ curl -X POST http://localhost:8787/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
-## Safety Notes
+## 注意事项
 
-Search Hub is a routing and synthesis layer. It does not guarantee that every
-provider result is true. Research mode tries to separate primary sources,
-secondary reporting, and weak claims, but users should still verify important
-facts before relying on them.
+Search Hub 是搜索路由和答案合成层，不保证每个 provider 返回的内容都是真的。
+
+`Research` 模式会尽量区分一手来源、二手报道和弱证据，但重要事实仍建议人工复核，尤其是医疗、法律、金融、安全等高风险场景。
 
 ## License
 
