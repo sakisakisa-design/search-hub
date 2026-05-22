@@ -1,0 +1,21 @@
+# Copy this file to .dev.vars for local development.
+# Add whichever provider keys you have. Search Hub works with any subset.
+
+GROK_API_KEY=
+SONAR_API_KEY=
+BRAVE_API_KEY=
+TAVILY_API_KEY=
+ANYSEARCH_API_KEY=
+
+GROK_MODEL=grok-4.3
+SONAR_MODEL=sonar
+ANYSEARCH_API_URL=https://api.anysearch.com/v1/search
+
+WORKERS_AI_SYNTH_MODEL=@cf/openai/gpt-oss-120b
+AI_SEARCH_AUTO_FETCH=false
+
+# Optional Cloudflare AI Search REST upload fallback.
+CF_ACCOUNT_ID=
+CF_API_TOKEN=
+CF_AI_SEARCH_INSTANCE=
+CF_AI_SEARCH_NAMESPACE=

@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "search-hub",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-22",
+  "ai": {
+    "binding": "AI"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
+  // Optional bindings for later:
+  // "kv_namespaces": [{ "binding": "SEARCH_CACHE", "id": "..." }],
+  // "d1_databases": [{ "binding": "SEARCH_DB", "database_name": "search-hub", "database_id": "..." }],
+  // "ai_search": [{ "binding": "AI_SEARCH_UPLOAD", "instance": "your-ai-search-instance" }]
+}

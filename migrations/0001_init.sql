@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS saved_sources (
+  url TEXT PRIMARY KEY,
+  title TEXT,
+  snippet TEXT,
+  reason TEXT,
+  tags TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ignored_sources (
+  url TEXT PRIMARY KEY,
+  reason TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS query_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  query TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  cached INTEGER NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);

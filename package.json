@@ -1,0 +1,19 @@
+{
+  "name": "search-hub",
+  "version": "0.1.0",
+  "description": "A Cloudflare Workers search hub for humans and AI agents.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260521.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.93.1"
+  }
+}

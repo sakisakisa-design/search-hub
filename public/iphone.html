@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Search Hub — iPhone preview</title>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: #e9e9ed;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                   "Helvetica Neue", system-ui, sans-serif;
+      color: #1c1c1e;
+      -webkit-font-smoothing: antialiased;
+    }
+    body[data-bg="dark"] { background: #0a0a0a; color: #f5f5f7; }
+
+    .stage {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 60px;
+      gap: 18px;
+      box-sizing: border-box;
+    }
+
+    .stage-head {
+      max-width: 420px;
+      text-align: center;
+    }
+    .stage-title {
+      margin: 0 0 4px;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .stage-sub {
+      margin: 0;
+      font-size: 12.5px;
+      color: #6e6e73;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      letter-spacing: 0;
+    }
+    body[data-bg="dark"] .stage-sub { color: #98989d; }
+
+    .stage-toolbar {
+      display: flex;
+      gap: 6px;
+      padding: 4px;
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    body[data-bg="dark"] .stage-toolbar {
+      background: rgba(28,28,30,0.7);
+      border-color: rgba(255,255,255,0.1);
+    }
+    .stage-toolbar button {
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 999px;
+      color: #6e6e73;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .stage-toolbar button.is-on {
+      background: #0a0a0a;
+      color: #fff;
+    }
+    body[data-bg="dark"] .stage-toolbar button { color: #98989d; }
+    body[data-bg="dark"] .stage-toolbar button.is-on {
+      background: #f5f5f7; color: #0a0a0a;
+    }
+
+    /* The actual phone iframe — sized to match the device's inner viewport */
+    .phone-iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: transparent;
+    }
+
+    .stage-foot {
+      text-align: center;
+      font-size: 11.5px;
+      color: #8e8e93;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      max-width: 420px;
+    }
+    .stage-foot a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function Preview() {
+      const [dark, setDark] = useState(false);
+      const [lang, setLang] = useState("zh");
+
+      // Sync stage bg with device dark mode so the chrome around the
+      // device feels coherent, not just the device itself.
+      useEffect(() => {
+        document.body.dataset.bg = dark ? "dark" : "light";
+      }, [dark]);
+
+      // Force the iframe to remount when theme/language flips so the
+      // child app reads the new EDITMODE values on a fresh load.
+      const iframeKey = `${dark}-${lang}`;
+
+      // Pass theme + lang as URL hash so the iframe can read it on boot.
+      const src = `/?embed=1#theme=${dark ? "dark" : "light"};lang=${lang}`;
+
+      return (
+        <div className="stage">
+          <div className="stage-head">
+            <div className="stage-title">Search Hub — iPhone</div>
+            <div className="stage-sub">375 × 812 · live, fully interactive</div>
+          </div>
+
+          <div className="stage-toolbar" role="group" aria-label="Preview controls">
+            <button className={lang === "en" ? "is-on" : ""} onClick={() => setLang("en")}>EN</button>
+            <button className={lang === "zh" ? "is-on" : ""} onClick={() => setLang("zh")}>中文</button>
+            <span style={{ width: 1, background: "currentColor", opacity: 0.15, margin: "0 4px" }} />
+            <button className={!dark ? "is-on" : ""} onClick={() => setDark(false)}>Light</button>
+            <button className={dark ? "is-on" : ""} onClick={() => setDark(true)}>Dark</button>
+          </div>
+
+          <IOSDevice width={390} height={844} dark={dark}>
+            <iframe
+              key={iframeKey}
+              className="phone-iframe"
+              src={src}
+              title="Search Hub on iPhone"
+            />
+          </IOSDevice>
+
+          <div className="stage-foot">
+            this is the real <code>Search Hub.html</code> running inside an iPhone frame —
+            tap, type, search, save, ignore. switch language and theme above.
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<Preview />);
+  </script>
+</body>
+</html>
