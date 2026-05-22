@@ -149,7 +149,7 @@ function parseSseEvent(part) {
 // ---------------------------------------------------------------
 
 const MOCK_HISTORY = [
-  { query: "post-quantum TLS rollout 2026", mode: "research", cached: false, created_at: "2026-05-22T09:14:00Z" },
+  { query: "Cloudflare Workers AI search examples", mode: "research", cached: false, created_at: "2026-05-22T09:14:00Z" },
   { query: "Apple Vision Pro 2 rumors",     mode: "fresh",    cached: true,  created_at: "2026-05-22T08:41:00Z" },
   { query: "duckdb vs clickhouse OLAP",     mode: "balanced", cached: true,  created_at: "2026-05-21T22:02:00Z" },
   { query: "EU AI Act enforcement timeline",mode: "research", cached: false, created_at: "2026-05-21T17:30:00Z" },

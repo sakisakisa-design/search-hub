@@ -98,7 +98,7 @@ const I18N = {
     empty_sub:        "Search Hub routes your query across multiple providers, fuses the answer, and shows you exactly where every fact came from.",
     try_label:        "Try",
     suggestions: [
-      "post-quantum TLS rollout 2026",
+      "Cloudflare Workers AI search examples",
       "Vision Pro 2 announcement rumors",
       "duckdb vs clickhouse for OLAP",
       "EU AI Act enforcement timeline",

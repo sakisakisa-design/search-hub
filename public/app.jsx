@@ -703,7 +703,7 @@ function App() {
   }, [tw.theme, tw.density, tw.accent, tw.language, isEmbedded]);
 
   // ---------- search state
-  const [query, setQuery]                     = useState("post-quantum TLS rollout 2026");
+  const [query, setQuery]                     = useState("");
   const [mode, setMode]                       = useState("balanced");
   const [freshness, setFreshness]             = useState("any");
   const [scope, setScope]                     = useState("web");

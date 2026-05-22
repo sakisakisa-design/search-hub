@@ -266,7 +266,7 @@ migrations/0002_add_history_payloads.sql
 
 ```json
 {
-  "query": "post-quantum TLS rollout 2026",
+  "query": "Cloudflare Workers AI search examples",
   "mode": "research",
   "freshness": "month",
   "source_scope": "web",
