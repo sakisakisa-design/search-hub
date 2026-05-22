@@ -37,6 +37,8 @@ const I18N = {
     progress_merge:   "Merging and deduplicating sources",
     progress_synthesis:"Writing research report with Workers AI",
     progress_synthesis_done:"Research report ready",
+    progress_fast_synthesis:"Writing quick answer with Workers AI",
+    progress_fast_synthesis_done:"Quick answer ready",
     progress_complete:"Done",
 
     /* mode / freshness / scope */
@@ -167,6 +169,8 @@ const I18N = {
     progress_merge:   "合并并去重来源",
     progress_synthesis:"Workers AI 正在撰写深度报告",
     progress_synthesis_done:"深度报告已生成",
+    progress_fast_synthesis:"Workers AI 正在整理快速答案",
+    progress_fast_synthesis_done:"快速答案已生成",
     progress_complete:"完成",
 
     /* mode / freshness / scope */

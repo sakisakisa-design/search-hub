@@ -1,7 +1,57 @@
 import type { ProviderId, SearchResponse, SearchSource } from "./types";
 
 export const DEFAULT_SYNTH_MODEL = "@cf/openai/gpt-oss-120b";
+export const DEFAULT_FAST_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 export const SYNTH_PROMPT_VERSION = "research-synth-v4";
+export const FAST_PROMPT_VERSION = "fast-synth-v1";
+
+export async function synthesizeFastAnswer(env: Env, response: SearchResponse, query: string): Promise<SearchResponse> {
+  if (!env.AI || !response.sources.length) {
+    return {
+      ...response,
+      notes: {
+        ...response.notes,
+        warnings: env.AI ? response.notes.warnings : [...response.notes.warnings, "workers_ai_fast: AI binding not configured"]
+      }
+    };
+  }
+
+  const sources = response.sources.slice(0, 8);
+  const prompt = buildFastPrompt(query, sources);
+  const instructions =
+    "You write concise search answers grounded only in the source dossier. Write Chinese unless the query is clearly English. Be direct and useful, not verbose. Cite factual claims with [1], [2]. Mention uncertainty when the sources are weak or indirect. Do not include a bibliography, source list, preamble, or offer to continue. Output only the final answer in Markdown.";
+  try {
+    const model = env.WORKERS_AI_FAST_MODEL ?? DEFAULT_FAST_MODEL;
+    const result = (await env.AI.run(model, {
+      messages: [
+        { role: "system", content: instructions },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 700,
+      temperature: 0.25
+    })) as unknown;
+    const synthesized = sanitizeAnswer(extractAiText(result));
+    return {
+      ...response,
+      answer: synthesized || response.answer,
+      notes: {
+        ...response.notes,
+        warnings: response.notes.warnings
+      }
+    };
+  } catch (error) {
+    return {
+      ...response,
+      notes: {
+        ...response.notes,
+        warnings: [
+          ...response.notes.warnings,
+          `workers_ai_fast: ${error instanceof Error ? error.message : String(error)}`
+        ]
+      }
+    };
+  }
+}
 
 export async function synthesizeResearch(env: Env, response: SearchResponse, query: string): Promise<SearchResponse> {
   if (!env.AI || !response.sources.length) {
@@ -58,6 +108,39 @@ export async function synthesizeResearch(env: Env, response: SearchResponse, que
       }
     };
   }
+}
+
+function buildFastPrompt(query: string, sources: SearchSource[]): string {
+  const sourceBlock = sources
+    .map(
+      (source, index) =>
+        `[${index + 1}] ${source.title}
+URL: ${source.url}
+Provider: ${source.provider}
+Published: ${source.published_at ?? "unknown"}
+Snippet: ${source.snippet}`
+    )
+    .join("\n\n");
+  const isChinese = /[\u3400-\u9fff]/.test(query);
+  const format = isChinese
+    ? `格式要求：
+- 以 "## 快速结论" 开头，直接用 2-4 句话回答。
+- 然后写 "## 依据"，用 2-5 条 bullet 说明关键证据。
+- 不要逐条复述所有来源，不要输出来源列表。`
+    : `Formatting requirements:
+- Start with "## Quick Take" and answer directly in 2-4 sentences.
+- Then write "## Evidence" with 2-5 bullets explaining the key support.
+- Do not summarize every source one by one and do not output a source list.`;
+  return `User query:
+${query}
+
+Source dossier:
+${sourceBlock}
+
+Task:
+Write a short original answer grounded only in these search results. Prefer current, primary, and concrete facts. If the sources do not prove the central claim, say that clearly.
+
+${format}`;
 }
 
 function buildPrompt(query: string, sources: SearchSource[]): string {

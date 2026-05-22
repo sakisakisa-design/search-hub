@@ -282,6 +282,8 @@ function formatProgress(event, t) {
     case "merge_start": return t.progress_merge;
     case "synthesis_start": return t.progress_synthesis;
     case "synthesis_done": return t.progress_synthesis_done;
+    case "fast_synthesis_start": return t.progress_fast_synthesis;
+    case "fast_synthesis_done": return t.progress_fast_synthesis_done;
     case "complete": return t.progress_complete;
     default: return event?.message || t.progress_start;
   }

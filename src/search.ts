@@ -1,6 +1,13 @@
 import { routeProviders } from "./providers";
 import { buildResearchPlan } from "./planner";
-import { DEFAULT_SYNTH_MODEL, SYNTH_PROMPT_VERSION, synthesizeResearch } from "./synthesizer";
+import {
+  DEFAULT_FAST_MODEL,
+  DEFAULT_SYNTH_MODEL,
+  FAST_PROMPT_VERSION,
+  SYNTH_PROMPT_VERSION,
+  synthesizeFastAnswer,
+  synthesizeResearch
+} from "./synthesizer";
 import { listIgnored, readCached, recordHistory, writeCached } from "./storage";
 import type { ProviderId, ResearchPlanItem, SearchResponse, SearchSource } from "./types";
 import { cacheKey, cacheTtl, isIgnored, stableDedupe } from "./utils";
@@ -25,9 +32,15 @@ export async function runSearch(
   };
 
   await emit({ type: "cache_check", message: "Checking local cache" });
+  const synthesisKey =
+    request.mode === "research"
+      ? `synth:${env.WORKERS_AI_SYNTH_MODEL ?? DEFAULT_SYNTH_MODEL}:${SYNTH_PROMPT_VERSION}`
+      : request.mode === "fast"
+        ? `fast-synth:${env.WORKERS_AI_FAST_MODEL ?? DEFAULT_FAST_MODEL}:${FAST_PROMPT_VERSION}`
+        : "";
   const key = cacheKey(
     request,
-    request.mode === "research" ? `synth:${env.WORKERS_AI_SYNTH_MODEL ?? DEFAULT_SYNTH_MODEL}:${SYNTH_PROMPT_VERSION}` : ""
+    synthesisKey
   );
   const cached = await readCached(env, key);
   if (cached) {
@@ -66,10 +79,19 @@ export async function runSearch(
 
   if (request.mode === "research") {
     await emit({ type: "synthesis_start", message: "Writing research report with Workers AI" });
+  } else if (request.mode === "fast") {
+    await emit({ type: "fast_synthesis_start", message: "Writing quick answer with Workers AI" });
   }
-  const finalResponse = request.mode === "research" ? await synthesizeResearch(env, response, request.query) : response;
+  const finalResponse =
+    request.mode === "research"
+      ? await synthesizeResearch(env, response, request.query)
+      : request.mode === "fast"
+        ? await synthesizeFastAnswer(env, response, request.query)
+        : response;
   if (request.mode === "research") {
     await emit({ type: "synthesis_done", message: "Research report ready" });
+  } else if (request.mode === "fast") {
+    await emit({ type: "fast_synthesis_done", message: "Quick answer ready" });
   }
   if (finalResponse.sources.length || finalResponse.answer) await writeCached(env, key, finalResponse, cacheTtl(request.freshness));
   await recordHistory(env, request, finalResponse);

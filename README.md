@@ -73,6 +73,7 @@ Optional storage
 Search Hub 不把所有 provider 当成一模一样的搜索框。
 
 - `fast`：优先 Brave / Tavily，适合快速拿网页结果。
+- `fast` 会用 Workers AI 小模型把来源整理成短答案，默认 `@cf/google/gemma-4-26b-a4b-it`。
 - `balanced`：优先 Sonar，再补充网页 provider。
 - `fresh`：优先 Grok，适合时效性强、社交/热点类问题。
 - `research`：生成多个研究子任务，按任务分配 provider，比如官方资料、近期报道、独立分析、技术细节，然后合并来源并生成报告。
@@ -149,6 +150,7 @@ GROK_MODEL=grok-4.3
 SONAR_MODEL=sonar
 ANYSEARCH_API_URL=https://api.anysearch.com/v1/search
 WORKERS_AI_SYNTH_MODEL=@cf/openai/gpt-oss-120b
+WORKERS_AI_FAST_MODEL=@cf/google/gemma-4-26b-a4b-it
 AI_SEARCH_AUTO_FETCH=false
 SEARCH_HUB_TOKEN=
 ```

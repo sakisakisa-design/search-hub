@@ -14,6 +14,7 @@ interface Env {
   AI_SEARCH_AUTO_FETCH?: string;
   SEARCH_HUB_TOKEN?: string;
   WORKERS_AI_SYNTH_MODEL?: string;
+  WORKERS_AI_FAST_MODEL?: string;
   AI?: {
     run(model: string, input: unknown): Promise<unknown>;
   };

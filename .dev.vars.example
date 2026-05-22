@@ -12,6 +12,7 @@ SONAR_MODEL=sonar
 ANYSEARCH_API_URL=https://api.anysearch.com/v1/search
 
 WORKERS_AI_SYNTH_MODEL=@cf/openai/gpt-oss-120b
+WORKERS_AI_FAST_MODEL=@cf/google/gemma-4-26b-a4b-it
 AI_SEARCH_AUTO_FETCH=false
 
 # Optional. If set, /api/* and /mcp require:
