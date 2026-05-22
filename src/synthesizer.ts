@@ -3,7 +3,7 @@ import type { ProviderId, SearchResponse, SearchSource } from "./types";
 export const DEFAULT_SYNTH_MODEL = "@cf/openai/gpt-oss-120b";
 export const DEFAULT_FAST_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 export const SYNTH_PROMPT_VERSION = "research-synth-v4";
-export const FAST_PROMPT_VERSION = "fast-synth-v1";
+export const FAST_PROMPT_VERSION = "fast-synth-v2";
 
 export async function synthesizeFastAnswer(env: Env, response: SearchResponse, query: string): Promise<SearchResponse> {
   if (!env.AI || !response.sources.length) {
@@ -19,7 +19,7 @@ export async function synthesizeFastAnswer(env: Env, response: SearchResponse, q
   const sources = response.sources.slice(0, 8);
   const prompt = buildFastPrompt(query, sources);
   const instructions =
-    "You write concise search answers grounded only in the source dossier. Write Chinese unless the query is clearly English. Be direct and useful, not verbose. Cite factual claims with [1], [2]. Mention uncertainty when the sources are weak or indirect. Do not include a bibliography, source list, preamble, or offer to continue. Output only the final answer in Markdown.";
+    "Highest priority: answer the user's exact question, not a generic topic suggested by the source snippets. You write concise search answers grounded only in the source dossier. Write Chinese unless the query is clearly English. Be direct and useful, not verbose. Cite factual claims with [1], [2]. Mention uncertainty when the sources are weak or indirect. Do not include a bibliography, source list, preamble, or offer to continue. Output only the final answer in Markdown.";
   try {
     const model = env.WORKERS_AI_FAST_MODEL ?? DEFAULT_FAST_MODEL;
     const result = (await env.AI.run(model, {
@@ -131,14 +131,19 @@ Snippet: ${source.snippet}`
 - Start with "## Quick Take" and answer directly in 2-4 sentences.
 - Then write "## Evidence" with 2-5 bullets explaining the key support.
 - Do not summarize every source one by one and do not output a source list.`;
-  return `User query:
+  return `USER QUESTION - ANSWER THIS EXACT QUESTION:
 ${query}
+
+The user's question above is the main task. Treat every source below as supporting evidence only. If a source is related but does not answer "${query}", do not let it change the topic.
 
 Source dossier:
 ${sourceBlock}
 
 Task:
-Write a short original answer grounded only in these search results. Prefer current, primary, and concrete facts. If the sources do not prove the central claim, say that clearly.
+Write a short original answer to this exact question:
+"${query}"
+
+Use the source dossier only to support the answer. Do not write a generic summary of the sources. Prefer current, primary, and concrete facts. If the sources do not prove the central claim in "${query}", say that clearly.
 
 ${format}`;
 }

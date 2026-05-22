@@ -63,7 +63,7 @@ export function routeProviders(env: Env, mode: string, sourceScope: string): Pro
       : mode === "fresh" || sourceScope === "social"
       ? ["grok", "sonar", "tavily", "brave", "anysearch"]
       : mode === "fast"
-        ? ["brave", "tavily", "sonar", "grok", "anysearch"]
+        ? ["sonar", "grok", "brave", "tavily", "anysearch"]
         : mode === "research"
           ? ["sonar", "grok", "tavily", "brave", "anysearch"]
           : ["sonar", "brave", "tavily", "grok", "anysearch"];

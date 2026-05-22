@@ -79,24 +79,29 @@ export async function runSearch(
 
   if (request.mode === "research") {
     await emit({ type: "synthesis_start", message: "Writing research report with Workers AI" });
-  } else if (request.mode === "fast") {
+  } else if (request.mode === "fast" && shouldSynthesizeFast(response)) {
     await emit({ type: "fast_synthesis_start", message: "Writing quick answer with Workers AI" });
   }
   const finalResponse =
     request.mode === "research"
       ? await synthesizeResearch(env, response, request.query)
-      : request.mode === "fast"
+      : request.mode === "fast" && shouldSynthesizeFast(response)
         ? await synthesizeFastAnswer(env, response, request.query)
         : response;
   if (request.mode === "research") {
     await emit({ type: "synthesis_done", message: "Research report ready" });
-  } else if (request.mode === "fast") {
+  } else if (request.mode === "fast" && shouldSynthesizeFast(response)) {
     await emit({ type: "fast_synthesis_done", message: "Quick answer ready" });
   }
   if (finalResponse.sources.length || finalResponse.answer) await writeCached(env, key, finalResponse, cacheTtl(request.freshness));
   await recordHistory(env, request, finalResponse);
   await emit({ type: "complete", message: "Search complete" });
   return finalResponse;
+}
+
+function shouldSynthesizeFast(response: SearchResponse): boolean {
+  const answerProviders = new Set<ProviderId>(["sonar", "grok"]);
+  return !response.notes.providers_used.some((provider) => answerProviders.has(provider));
 }
 
 async function runPlannedResearch(
