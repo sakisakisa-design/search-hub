@@ -1,4 +1,4 @@
-import type { IgnoreRequest, RememberRequest, SearchResponse } from "./types";
+import type { IgnoreRequest, RememberRequest, SearchRequest, SearchResponse } from "./types";
 import { canonicalUrl, extractHostname } from "./utils";
 
 export async function readCached(env: Env, key: string): Promise<SearchResponse | null> {
@@ -171,7 +171,75 @@ export async function listIgnored(env: Env): Promise<Set<string>> {
   }
 }
 
-export async function recordHistory(env: Env, query: string, mode: string, cached: boolean): Promise<void> {
+export async function recordHistory(
+  env: Env,
+  request: Required<SearchRequest>,
+  response: SearchResponse
+): Promise<void> {
+  if (!env.SEARCH_DB) return;
+  await ensureHistoryTable(env);
+  await env.SEARCH_DB.prepare(
+    `INSERT INTO query_history (query, mode, cached, request_json, response_json)
+     VALUES (?, ?, ?, ?, ?)`
+  )
+    .bind(
+      request.query,
+      request.mode,
+      response.cached ? 1 : 0,
+      JSON.stringify(request),
+      JSON.stringify(response)
+    )
+    .run();
+}
+
+export async function history(env: Env): Promise<{
+  items: Array<{
+    id: number;
+    query: string;
+    mode: string;
+    cached: boolean;
+    created_at: string;
+    request?: Required<SearchRequest>;
+    response?: SearchResponse;
+  }>;
+}> {
+  if (!env.SEARCH_DB) return { items: [] };
+  await ensureHistoryTable(env);
+  const result = await env.SEARCH_DB.prepare(
+    `SELECT id, query, mode, cached, created_at, request_json, response_json
+     FROM query_history
+     ORDER BY id DESC
+     LIMIT 50`
+  ).all<{
+    id: number;
+    query: string;
+    mode: string;
+    cached: number;
+    created_at: string;
+    request_json: string | null;
+    response_json: string | null;
+  }>();
+  return {
+    items: (result.results ?? []).map((row) => ({
+      id: row.id,
+      query: row.query,
+      mode: row.mode,
+      cached: Boolean(row.cached),
+      created_at: row.created_at,
+      request: parseJson(row.request_json),
+      response: parseJson(row.response_json)
+    }))
+  };
+}
+
+export async function deleteHistory(env: Env, id: number): Promise<{ deleted: boolean; storage: string }> {
+  if (!env.SEARCH_DB) return { deleted: true, storage: "ephemeral-no-d1" };
+  await ensureHistoryTable(env);
+  await env.SEARCH_DB.prepare(`DELETE FROM query_history WHERE id = ?`).bind(id).run();
+  return { deleted: true, storage: "d1" };
+}
+
+async function ensureHistoryTable(env: Env): Promise<void> {
   if (!env.SEARCH_DB) return;
   await env.SEARCH_DB.prepare(
     `CREATE TABLE IF NOT EXISTS query_history (
@@ -179,34 +247,27 @@ export async function recordHistory(env: Env, query: string, mode: string, cache
       query TEXT NOT NULL,
       mode TEXT NOT NULL,
       cached INTEGER NOT NULL,
+      request_json TEXT,
+      response_json TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`
   ).run();
-  await env.SEARCH_DB.prepare(`INSERT INTO query_history (query, mode, cached) VALUES (?, ?, ?)`)
-    .bind(query, mode, cached ? 1 : 0)
-    .run();
+  await addColumnIfMissing(env, "query_history", "request_json", "TEXT");
+  await addColumnIfMissing(env, "query_history", "response_json", "TEXT");
 }
 
-export async function history(env: Env): Promise<{ items: Array<{ query: string; mode: string; cached: boolean; created_at: string }> }> {
-  if (!env.SEARCH_DB) return { items: [] };
-  await env.SEARCH_DB.prepare(
-    `CREATE TABLE IF NOT EXISTS query_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      query TEXT NOT NULL,
-      mode TEXT NOT NULL,
-      cached INTEGER NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )`
-  ).run();
-  const result = await env.SEARCH_DB.prepare(
-    `SELECT query, mode, cached, created_at FROM query_history ORDER BY id DESC LIMIT 50`
-  ).all<{ query: string; mode: string; cached: number; created_at: string }>();
-  return {
-    items: (result.results ?? []).map((row) => ({
-      query: row.query,
-      mode: row.mode,
-      cached: Boolean(row.cached),
-      created_at: row.created_at
-    }))
-  };
+async function addColumnIfMissing(env: Env, table: string, column: string, type: string): Promise<void> {
+  if (!env.SEARCH_DB) return;
+  const columns = await env.SEARCH_DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  if ((columns.results ?? []).some((item) => item.name === column)) return;
+  await env.SEARCH_DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+}
+
+function parseJson<T>(value: string | null): T | undefined {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return undefined;
+  }
 }

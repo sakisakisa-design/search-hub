@@ -31,21 +31,20 @@ export async function runSearch(
   );
   const cached = await readCached(env, key);
   if (cached) {
-    const response = {
+    const response: SearchResponse = {
       ...cached,
       cached: true,
       sources: cached.sources.map((source) => ({ ...source, provider: "cache" as const, cached: true })),
       notes: { ...cached.notes, freshness: "cache" as const }
     };
-    await recordHistory(env, request.query, request.mode, true);
+    await recordHistory(env, request, response);
     await emit({ type: "cache_hit", message: "Cache hit" });
     return response;
   }
 
   const selected = routeProviders(env, request.mode, request.source_scope);
   if (!selected.length) {
-    await recordHistory(env, request.query, request.mode, false);
-    return {
+    const response: SearchResponse = {
       answer: "",
       cached: false,
       sources: [],
@@ -57,6 +56,8 @@ export async function runSearch(
         ]
       }
     };
+    await recordHistory(env, request, response);
+    return response;
   }
 
   const response = request.mode === "research"
@@ -71,7 +72,7 @@ export async function runSearch(
     await emit({ type: "synthesis_done", message: "Research report ready" });
   }
   if (finalResponse.sources.length || finalResponse.answer) await writeCached(env, key, finalResponse, cacheTtl(request.freshness));
-  await recordHistory(env, request.query, request.mode, false);
+  await recordHistory(env, request, finalResponse);
   await emit({ type: "complete", message: "Search complete" });
   return finalResponse;
 }

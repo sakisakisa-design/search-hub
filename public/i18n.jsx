@@ -77,6 +77,10 @@ const I18N = {
     score_title:      "Relevance score",
     copy:             "Copy",
     copied:           "Copied",
+    auth_title:       "Access token required",
+    auth_body:        "This Search Hub is protected. Enter the site token to use search APIs.",
+    auth_placeholder: "Search Hub token",
+    auth_submit:      "Unlock",
 
     /* sidebar */
     recent:           "Recent",
@@ -203,6 +207,10 @@ const I18N = {
     score_title:      "相关度",
     copy:             "复制",
     copied:           "已复制",
+    auth_title:       "需要访问 token",
+    auth_body:        "这个 Search Hub 已开启保护。输入站点 token 后才能调用搜索 API。",
+    auth_placeholder: "Search Hub token",
+    auth_submit:      "解锁",
 
     /* sidebar */
     recent:           "最近",

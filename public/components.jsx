@@ -39,6 +39,8 @@ function Icon({ name, size = 20, stroke = 1.6, style }) {
       return <svg {...props}><path d="M10 3v4M10 13v4M3 10h4M13 10h4M5 5l2.5 2.5M12.5 12.5 15 15M5 15l2.5-2.5M12.5 7.5 15 5" /></svg>;
     case "plug":
       return <svg {...props}><path d="M7 3v3M13 3v3M5.5 6h9v3a4.5 4.5 0 0 1-9 0V6zM10 13.5V17" /></svg>;
+    case "lock":
+      return <svg {...props}><rect x="4.5" y="8.5" width="11" height="8" rx="2" /><path d="M7 8.5V6.8a3 3 0 0 1 6 0v1.7" /></svg>;
     case "filter":
       return <svg {...props}><path d="M3.5 5h13M6 10h8M8.5 15h3" /></svg>;
     case "chevron":

@@ -32,16 +32,37 @@ const DEFAULT_CONFIG = {
 };
 
 let CONFIG = { ...DEFAULT_CONFIG };
+const AUTH_TOKEN_KEY = "search-hub:auth-token:v1";
 
 function configure(patch) {
   CONFIG = { ...CONFIG, ...patch };
+}
+
+function getAuthToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setAuthToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+    else localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {}
+}
+
+function authHeaders() {
+  const token = getAuthToken();
+  return token ? { authorization: `Bearer ${token}` } : {};
 }
 
 async function request(path, init = {}) {
   if (CONFIG.mock) return MOCK_BACKEND(path, init);
   const url = (CONFIG.baseUrl || "") + path;
   const res = await CONFIG.fetchImpl(url, {
-    headers: { "content-type": "application/json", ...(init.headers || {}) },
+    headers: { "content-type": "application/json", ...authHeaders(), ...(init.headers || {}) },
     ...init,
   });
   if (!res.ok) {
@@ -55,6 +76,8 @@ async function request(path, init = {}) {
 
 const SearchHubAPI = {
   configure,
+  getAuthToken,
+  setAuthToken,
   getProviders: () => request("/api/providers"),
   search: (body) =>
     request("/api/search", { method: "POST", body: JSON.stringify(body) }),
@@ -65,6 +88,7 @@ const SearchHubAPI = {
   ignore: (body) =>
     request("/api/ignore", { method: "POST", body: JSON.stringify(body) }),
   getHistory: () => request("/api/history"),
+  deleteHistory: (id) => request(`/api/history/${id}`, { method: "DELETE" }),
 };
 
 async function streamRequest(path, body, onEvent) {
@@ -77,7 +101,7 @@ async function streamRequest(path, body, onEvent) {
 
   const res = await CONFIG.fetchImpl((CONFIG.baseUrl || "") + path, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) {

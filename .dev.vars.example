@@ -14,6 +14,10 @@ ANYSEARCH_API_URL=https://api.anysearch.com/v1/search
 WORKERS_AI_SYNTH_MODEL=@cf/openai/gpt-oss-120b
 AI_SEARCH_AUTO_FETCH=false
 
+# Optional. If set, /api/* and /mcp require:
+# Authorization: Bearer <SEARCH_HUB_TOKEN>
+SEARCH_HUB_TOKEN=
+
 # Optional Cloudflare AI Search REST upload fallback.
 CF_ACCOUNT_ID=
 CF_API_TOKEN=

@@ -308,7 +308,7 @@ function writeJsonLocal(key, value) {
 }
 
 function historyKey(item) {
-  return `${item?.query || ""}|${item?.mode || ""}|${item?.created_at || ""}`;
+  return item?.id ? `remote:${item.id}` : `${item?.query || ""}|${item?.mode || ""}|${item?.created_at || ""}`;
 }
 
 function mergeHistory(localItems, remoteItems, deletedKeys = new Set()) {
@@ -615,6 +615,36 @@ function ToastStack({ items, onDismiss }) {
   );
 }
 
+function AuthDialog({ open, token, setToken, onSubmit, t }) {
+  if (!open) return null;
+  return (
+    <div className="auth-scrim" role="dialog" aria-modal="true" aria-label={t.auth_title}>
+      <form
+        className="auth-card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <div className="auth-icon"><Icon name="lock" size={18} /></div>
+        <h2>{t.auth_title}</h2>
+        <p>{t.auth_body}</p>
+        <input
+          className="auth-input"
+          type="password"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder={t.auth_placeholder}
+          autoFocus
+        />
+        <button type="submit" className="auth-submit" disabled={!token.trim()}>
+          {t.auth_submit}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Root                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -692,22 +722,43 @@ function App() {
   const [providersLoading, setProvidersLoading] = useState(false);
   const [history, setHistory]                 = useState(() => readJsonLocal(LOCAL_HISTORY_KEY, []));
   const [deletedHistory, setDeletedHistory]   = useState(() => new Set(readJsonLocal(LOCAL_DELETED_HISTORY_KEY, [])));
+  const [authRequired, setAuthRequired]       = useState(false);
+  const [authToken, setAuthToken]             = useState(() => SearchHubAPI.getAuthToken?.() || "");
+
+  const handleApiError = useCallback((error) => {
+    if (error?.status === 401) {
+      setAuthRequired(true);
+      return true;
+    }
+    return false;
+  }, []);
 
   const loadProviders = useCallback(async () => {
     setProvidersLoading(true);
     try {
       const r = await SearchHubAPI.getProviders();
       setProviders(r.providers || []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      if (!handleApiError(e)) console.error(e);
+    }
     finally { setProvidersLoading(false); }
-  }, []);
+  }, [handleApiError]);
 
   const loadHistory = useCallback(async () => {
     try {
       const r = await SearchHubAPI.getHistory();
       setHistory((local) => mergeHistory(local, r.items || [], deletedHistory));
-    } catch (e) { console.error(e); }
-  }, [deletedHistory]);
+    } catch (e) {
+      if (!handleApiError(e)) console.error(e);
+    }
+  }, [deletedHistory, handleApiError]);
+
+  const saveAuthToken = useCallback(() => {
+    SearchHubAPI.setAuthToken?.(authToken.trim());
+    setAuthRequired(false);
+    loadProviders();
+    loadHistory();
+  }, [authToken, loadProviders, loadHistory]);
 
   useEffect(() => { loadProviders(); loadHistory(); }, [loadProviders, loadHistory]);
   useEffect(() => { writeJsonLocal(LOCAL_HISTORY_KEY, history); }, [history]);
@@ -759,14 +810,20 @@ function App() {
       setHistory((h) => mergeHistory([{
         query: query.trim(), mode, cached: r.cached,
         created_at: new Date().toISOString(),
+        request: body,
+        response: r,
       }], h, deletedHistory));
     } catch (e) {
-      setError(e.message || "Unknown error");
-      setStatus("error");
+      if (handleApiError(e)) {
+        setStatus("idle");
+      } else {
+        setError(e.message || "Unknown error");
+        setStatus("error");
+      }
     } finally {
       setLoadingDetail("");
     }
-  }, [query, mode, freshness, scope, domains, excludeDomains, maxResults, t, deletedHistory]);
+  }, [query, mode, freshness, scope, domains, excludeDomains, maxResults, t, deletedHistory, handleApiError]);
 
   const handleSave = useCallback(async (src) => {
     setSaved((s) => new Set(s).add(src.url));
@@ -779,9 +836,9 @@ function App() {
       });
       pushToast(t.toast_saved, "bookmark-fill");
     } catch (e) {
-      pushToast(t.toast_save_fail, "close");
+      if (!handleApiError(e)) pushToast(t.toast_save_fail, "close");
     }
-  }, [lastQuery, mode, pushToast, query, t]);
+  }, [lastQuery, mode, pushToast, query, t, handleApiError]);
 
   const handleIgnore = useCallback(async (src) => {
     setHidden((s) => new Set(s).add(src.url));
@@ -789,21 +846,43 @@ function App() {
       await SearchHubAPI.ignore({ url: src.url, reason: "low_quality" });
       pushToast(t.toast_ignored, "hide");
     } catch (e) {
-      pushToast(t.toast_ignore_fail, "close");
+      if (!handleApiError(e)) pushToast(t.toast_ignore_fail, "close");
     }
-  }, [pushToast, t]);
+  }, [pushToast, t, handleApiError]);
 
   const handlePickHistory = useCallback((h) => {
     setQuery(h.query);
-    setMode(h.mode);
+    if (h.request) {
+      setMode(h.request.mode || h.mode);
+      setFreshness(h.request.freshness || "any");
+      setScope(h.request.source_scope || "web");
+      setDomains((h.request.domains || []).join(", "));
+      setExcludeDomains((h.request.exclude_domains || []).join(", "));
+      setMaxResults(h.request.max_results || 10);
+    } else {
+      setMode(h.mode);
+    }
+    if (h.response) {
+      setResponse(h.response);
+      setLastQuery(h.query);
+      setStatus("success");
+      setHidden(new Set());
+      return;
+    }
     setTimeout(() => { document.querySelector(".sform-go")?.click(); }, 0);
   }, []);
 
-  const handleDeleteHistory = useCallback((item) => {
+  const handleDeleteHistory = useCallback(async (item) => {
     const key = historyKey(item);
     setDeletedHistory((items) => new Set(items).add(key));
     setHistory((items) => items.filter((h) => historyKey(h) !== key));
-  }, []);
+    if (!item.id) return;
+    try {
+      await SearchHubAPI.deleteHistory?.(item.id);
+    } catch (e) {
+      if (!handleApiError(e)) console.error(e);
+    }
+  }, [handleApiError]);
 
   const visibleSources = useMemo(() => {
     if (!response) return [];
@@ -815,6 +894,13 @@ function App() {
 
   return (
     <div className={cls("app", sidebarOpen && "with-sidebar")}>
+      <AuthDialog
+        open={authRequired}
+        token={authToken}
+        setToken={setAuthToken}
+        onSubmit={saveAuthToken}
+        t={t}
+      />
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

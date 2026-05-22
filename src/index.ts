@@ -2,7 +2,7 @@ import { fetchUrl } from "./fetch-url";
 import { handleMcp } from "./mcp";
 import { providerStatuses } from "./providers";
 import { runSearch } from "./search";
-import { history, ignore, remember } from "./storage";
+import { deleteHistory, history, ignore, remember } from "./storage";
 import { json, normalizeSearchRequest, validateSearchRequest } from "./utils";
 
 export default {
@@ -11,6 +11,9 @@ export default {
 
     const url = new URL(request.url);
     try {
+      if (isProtectedPath(url.pathname) && !isAuthorized(request, env)) {
+        return json({ error: "unauthorized" }, { status: 401 });
+      }
       if (url.pathname === "/health") {
         return json({ ok: true, service: "search-hub-mcp", time: new Date().toISOString() });
       }
@@ -51,6 +54,10 @@ export default {
       if (url.pathname === "/api/history" && request.method === "GET") {
         return json(await history(env));
       }
+      const historyMatch = url.pathname.match(/^\/api\/history\/(\d+)$/);
+      if (historyMatch && request.method === "DELETE") {
+        return json(await deleteHistory(env, Number(historyMatch[1])));
+      }
       if (url.pathname === "/api/fetch" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { url?: string };
         return json(await fetchUrl(String(body.url ?? "")));
@@ -67,6 +74,19 @@ export default {
     }
   }
 };
+
+function isProtectedPath(pathname: string): boolean {
+  return pathname === "/mcp" || pathname.startsWith("/api/");
+}
+
+function isAuthorized(request: Request, env: Env): boolean {
+  const expected = env.SEARCH_HUB_TOKEN?.trim();
+  if (!expected) return true;
+  const authorization = request.headers.get("authorization") ?? "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const token = bearer || request.headers.get("x-search-hub-token")?.trim() || "";
+  return token.length === expected.length && token === expected;
+}
 
 function streamSearch(env: Env, searchRequest: ReturnType<typeof normalizeSearchRequest>): Response {
   const encoder = new TextEncoder();
