@@ -199,7 +199,7 @@ async function runProviderSearch(
     request.max_results
   );
   const response: SearchResponse = {
-    answer: answers[0] ?? "",
+    answer: answers[0] ?? buildSourceSummary(request, filtered),
     cached: false,
     sources: filtered,
     notes: {
@@ -209,6 +209,40 @@ async function runProviderSearch(
     }
   };
   return response;
+}
+
+function buildSourceSummary(request: Required<import("./types").SearchRequest>, sources: SearchSource[]): string {
+  if (!sources.length) return "";
+  const top = sources.slice(0, Math.min(3, sources.length));
+  const isChinese = /[\u3400-\u9fff]/.test(request.query);
+  if (!isChinese) {
+    const lines = top.map((source, index) => {
+      const snippet = compactSnippet(source.snippet || source.title);
+      return `- **${source.title || "Source"}**: ${snippet} [${index + 1}]`;
+    });
+    return [
+      `## Quick Take`,
+      `Fast mode found ${sources.length} relevant source${sources.length === 1 ? "" : "s"} for "${request.query}". The strongest signals are:`,
+      "",
+      ...lines
+    ].join("\n");
+  }
+  const lines = top.map((source, index) => {
+    const snippet = compactSnippet(source.snippet || source.title);
+    return `- **${source.title || "来源"}**：${snippet} [${index + 1}]`;
+  });
+  return [
+    "## 快速结论",
+    `Fast 模式为「${request.query}」找到 ${sources.length} 条相关来源。最值得先看的信息是：`,
+    "",
+    ...lines
+  ].join("\n");
+}
+
+function compactSnippet(value: string): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) return "该来源没有提供摘要。";
+  return text.length > 180 ? `${text.slice(0, 177)}...` : text;
 }
 
 function selectProviderTargets(
