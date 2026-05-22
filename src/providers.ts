@@ -63,7 +63,7 @@ export function routeProviders(env: Env, mode: string, sourceScope: string): Pro
       : mode === "fresh" || sourceScope === "social"
       ? ["grok", "sonar", "tavily", "brave", "anysearch"]
       : mode === "fast"
-        ? ["sonar", "grok", "brave", "tavily", "anysearch"]
+        ? ["sonar", "grok", "tavily", "anysearch", "brave"]
         : mode === "research"
           ? ["sonar", "grok", "tavily", "brave", "anysearch"]
           : ["sonar", "brave", "tavily", "grok", "anysearch"];
@@ -105,7 +105,7 @@ async function searchTavily(env: Env, request: Parameters<Provider["search"]>[1]
     query: request.query,
     topic: request.source_scope === "news" ? "news" : "general",
     search_depth: request.mode === "research" ? "advanced" : "basic",
-    include_answer: request.mode !== "fast",
+    include_answer: true,
     include_raw_content: false,
     max_results: request.max_results,
     time_range: request.freshness === "any" ? undefined : request.freshness,

@@ -100,8 +100,8 @@ export async function runSearch(
 }
 
 function shouldSynthesizeFast(response: SearchResponse): boolean {
-  const answerProviders = new Set<ProviderId>(["sonar", "grok"]);
-  return !response.notes.providers_used.some((provider) => answerProviders.has(provider));
+  const directAnswerProviders = new Set<ProviderId>(["sonar", "grok", "tavily", "anysearch"]);
+  return !response.notes.answer_provider || !directAnswerProviders.has(response.notes.answer_provider);
 }
 
 async function runPlannedResearch(
@@ -204,6 +204,7 @@ async function runProviderSearch(
   );
   const warnings: string[] = [];
   const answers: string[] = [];
+  let answerProvider: ProviderId | undefined;
   const sources: SearchSource[] = [];
   const used: ProviderId[] = [];
 
@@ -214,7 +215,10 @@ async function runProviderSearch(
       return;
     }
     used.push(provider.id);
-    if (result.value.answer) answers.push(result.value.answer);
+    if (result.value.answer) {
+      answers.push(result.value.answer);
+      answerProvider ??= provider.id;
+    }
     if (result.value.warnings?.length) warnings.push(...result.value.warnings.map((warning) => `${provider.id}: ${warning}`));
     sources.push(...result.value.sources);
   });
@@ -232,7 +236,8 @@ async function runProviderSearch(
     notes: {
       providers_used: used,
       freshness: "live",
-      warnings
+      warnings,
+      ...(answerProvider ? { answer_provider: answerProvider } : {})
     }
   };
   return response;

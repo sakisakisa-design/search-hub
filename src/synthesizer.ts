@@ -3,7 +3,7 @@ import type { ProviderId, SearchResponse, SearchSource } from "./types";
 export const DEFAULT_SYNTH_MODEL = "@cf/openai/gpt-oss-120b";
 export const DEFAULT_FAST_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 export const SYNTH_PROMPT_VERSION = "research-synth-v4";
-export const FAST_PROMPT_VERSION = "fast-synth-v2";
+export const FAST_PROMPT_VERSION = "fast-synth-v3";
 
 export async function synthesizeFastAnswer(env: Env, response: SearchResponse, query: string): Promise<SearchResponse> {
   if (!env.AI || !response.sources.length) {

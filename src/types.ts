@@ -37,6 +37,7 @@ export interface SearchResponse {
     providers_used: ProviderId[];
     freshness: "cache" | "live" | "none";
     warnings: string[];
+    answer_provider?: ProviderId;
     research_plan?: ResearchPlanItem[];
   };
 }
