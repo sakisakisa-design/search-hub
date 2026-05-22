@@ -268,6 +268,14 @@ function renderInlineMarkdown(text) {
   });
 }
 
+function cleanSourceText(value) {
+  const withoutTags = String(value || "").replace(/<[^>]*>/g, " ");
+  if (typeof document === "undefined") return withoutTags.replace(/\s+/g, " ").trim();
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = withoutTags;
+  return textarea.value.replace(/\s+/g, " ").trim();
+}
+
 function formatProgress(event, t) {
   const provider = event?.provider ? String(event.provider) : "";
   const providerName = provider ? (PROVIDER_LABEL[provider] || provider) : "";
@@ -334,6 +342,8 @@ function mergeHistory(localItems, remoteItems, deletedKeys = new Set()) {
 /* -------------------------------------------------------------------------- */
 function SourceRow({ index, source, saved, onSave, onIgnore, t }) {
   const host = hostOf(source.url);
+  const title = cleanSourceText(source.title);
+  const snippet = cleanSourceText(source.snippet);
   return (
     <article className="src">
       <div className="src-rank">{String(index + 1).padStart(2, "0")}</div>
@@ -352,9 +362,9 @@ function SourceRow({ index, source, saved, onSave, onIgnore, t }) {
           </span>
         </div>
         <a className="src-title" href={source.url} target="_blank" rel="noopener noreferrer">
-          {source.title}
+          {title}
         </a>
-        <p className="src-snippet">{source.snippet}</p>
+        <p className="src-snippet">{snippet}</p>
         <div className="src-actions">
           <a href={source.url} target="_blank" rel="noopener noreferrer" className="act">
             <Icon name="ext" size={14} /> {t.open}
